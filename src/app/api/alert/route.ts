@@ -10,13 +10,9 @@ function fetchWithTimeout(resource: string, options: any = {}) {
 }
 
 function hasTitle(item: unknown): item is { title: string[] } {
-  return (
-    !!item &&
-    typeof item === 'object' &&
-    'title' in item &&
-    Array.isArray((item as { title?: unknown }).title) &&
-    typeof (item as { title: string[] }).title[0] === 'string'
-  );
+  if (!item || typeof item !== 'object' || !('title' in item)) return false;
+  const t = (item as { title?: unknown }).title;
+  return Array.isArray(t) && typeof t[0] === 'string';
 }
 
 export async function GET(req: NextRequest) {

@@ -40,7 +40,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       if (saved) {
         try {
           setTheme(JSON.parse(saved));
-        } catch (_) {}
+        } catch {}
       }
       setLoaded(true);
     }
