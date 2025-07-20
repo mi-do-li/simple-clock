@@ -34,12 +34,12 @@ export async function GET(req: NextRequest) {
       console.error('alert xml parse error:', e);
       return NextResponse.json({ alerts: [] }, { status: 500 });
     }
-    let items = json?.rss?.channel?.[0]?.item;
+    let items: unknown[] = json?.rss?.channel?.[0]?.item;
     if (!Array.isArray(items)) items = [items];
-    const alerts = (items || [])
+    const alerts = items
       .filter(hasTitle)
-      .map((item: { title: string[] }) => item.title[0])
-      .filter((title: string) => title.includes(pref));
+      .map((item) => item.title[0])
+      .filter((title) => title.includes(pref));
     return NextResponse.json({ alerts });
   } catch (e) {
     console.error('alert fetch error:', e);
