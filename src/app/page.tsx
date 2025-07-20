@@ -7,8 +7,35 @@ import Sidebar from "./components/Sidebar";
 import { useTheme } from "./components/ThemeContext";
 import { useMemo } from "react";
 
-function pad(num: number) {
-  return num.toString().padStart(2, "0");
+// AnimatedNumber, themeOptions, presetThemes, handleFullscreen などをHome関数の外に定義
+function AnimatedNumber({ value, className, style }: { value: string, className?: string, style?: React.CSSProperties }) {
+  return <span className={className} style={style}>{value}</span>;
+}
+
+const themeOptions = [
+  { key: "auto", label: "自動" },
+  { key: "morning", label: "朝" },
+  { key: "day", label: "昼" },
+  { key: "evening", label: "夕" },
+  { key: "night", label: "夜" },
+];
+
+const presetThemes = [
+  { key: 'retro', label: 'レトロ', bg: '#f5e9da', color: '#7c4f20', sec: '#bfa77a', font: 'Courier New, monospace' },
+  { key: 'modern', label: 'モダン', bg: '#222', color: '#fff', sec: '#bbb', font: 'Montserrat, sans-serif' },
+  { key: 'spring', label: '春', bg: '#ffeef4', color: '#d17c9c', sec: '#f8bbd0', font: 'Noto Sans JP, sans-serif' },
+  { key: 'summer', label: '夏', bg: '#e0f7fa', color: '#00796b', sec: '#4dd0e1', font: 'Noto Sans JP, sans-serif' },
+  { key: 'autumn', label: '秋', bg: '#fff3e0', color: '#b26a00', sec: '#ffb74d', font: 'Noto Sans JP, sans-serif' },
+  { key: 'winter', label: '冬', bg: '#e3f2fd', color: '#1565c0', sec: '#90caf9', font: 'Noto Sans JP, sans-serif' },
+  { key: 'custom', label: 'カスタム', bg: '#fff', color: '#222', sec: '#bbb', font: 'Arial, sans-serif' },
+];
+
+function handleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
 }
 
 // 時間帯・明るさごとのテーマ色
@@ -104,28 +131,64 @@ function getTimeTheme(date: Date, ambient: number | null) {
   return { ...themes[3], name: 'night' };
 }
 
-function AnimatedNumber({ value, className, style }: { value: string, className?: string, style?: React.CSSProperties }) {
-  return <span className={className} style={style}>{value}</span>;
+// テーマ切り替えロジックを動的に
+function getTimeThemeDynamic(date: Date, ambient: number | null, sunTimes: {sunrise: Date|null, sunset: Date|null}|null) {
+  if (ambient !== null && ambient < 30) {
+    return { ...themes[3], name: 'night' };
+  }
+  if (!sunTimes || !sunTimes.sunrise || !sunTimes.sunset) {
+    // フォールバック: 従来のロジック
+    return getTimeTheme(date, ambient);
+  }
+  const now = date.getTime();
+  const sunrise = sunTimes.sunrise.getTime();
+  const sunset = sunTimes.sunset.getTime();
+  // 朝: 日の出45分前〜日の出3時間後
+  const morningStart = sunrise - 45*60*1000;
+  const morningEnd = sunrise + 3*60*60*1000;
+  // 昼: 朝の終わり〜日の入り1時間前
+  const dayStart = morningEnd;
+  const dayEnd = sunset - 60*60*1000;
+  // 夕方: 昼の終わり〜日の入り+30分
+  const eveningStart = sunset - 60*60*1000; // 日の入り1時間前
+  const eveningPeak = sunset - 10*60*1000; // 日の入り10分前
+  const eveningEnd = sunset + 30*60*1000;  // 日の入り30分後
+  // 夜: それ以外
+  if (now >= morningStart && now < morningEnd) {
+    // 朝: 朝→昼補間
+    const t = (now - morningStart) / (morningEnd - morningStart);
+    return {
+      bg: lerpColor(themes[0].bg, themes[1].bg, t),
+      color: lerpColor(themes[0].color, themes[1].color, t),
+      sec: lerpColor(themes[0].sec, themes[1].sec, t),
+      name: 'morning-day'
+    };
+  } else if (now >= dayStart && now < dayEnd) {
+    // 昼
+    return { ...themes[1], name: 'day' };
+  } else if (now >= eveningStart && now < eveningPeak) {
+    // 昼→夕方色へ補間
+    const t = (now - eveningStart) / (eveningPeak - eveningStart);
+    return {
+      bg: lerpColor(themes[1].bg, themes[2].bg, t),
+      color: lerpColor(themes[1].color, themes[2].color, t),
+      sec: lerpColor(themes[1].sec, themes[2].sec, t),
+      name: 'day-evening'
+    };
+  } else if (now >= eveningPeak && now < eveningEnd) {
+    // 夕方色→夜色へ補間
+    const t = (now - eveningPeak) / (eveningEnd - eveningPeak);
+    return {
+      bg: lerpColor(themes[2].bg, themes[3].bg, t),
+      color: lerpColor(themes[2].color, themes[3].color, t),
+      sec: lerpColor(themes[2].sec, themes[3].sec, t),
+      name: 'evening-night'
+    };
+  } else {
+    // 夜
+    return { ...themes[3], name: 'night' };
+  }
 }
-
-const themeOptions = [
-  { key: "auto", label: "自動" },
-  { key: "morning", label: "朝" },
-  { key: "day", label: "昼" },
-  { key: "evening", label: "夕" },
-  { key: "night", label: "夜" },
-];
-
-// プリセット・カスタムテーマ
-const presetThemes = [
-  { key: 'retro', label: 'レトロ', bg: '#f5e9da', color: '#7c4f20', sec: '#bfa77a', font: 'Courier New, monospace' },
-  { key: 'modern', label: 'モダン', bg: '#222', color: '#fff', sec: '#bbb', font: 'Montserrat, sans-serif' },
-  { key: 'spring', label: '春', bg: '#ffeef4', color: '#d17c9c', sec: '#f8bbd0', font: 'Noto Sans JP, sans-serif' },
-  { key: 'summer', label: '夏', bg: '#e0f7fa', color: '#00796b', sec: '#4dd0e1', font: 'Noto Sans JP, sans-serif' },
-  { key: 'autumn', label: '秋', bg: '#fff3e0', color: '#b26a00', sec: '#ffb74d', font: 'Noto Sans JP, sans-serif' },
-  { key: 'winter', label: '冬', bg: '#e3f2fd', color: '#1565c0', sec: '#90caf9', font: 'Noto Sans JP, sans-serif' },
-  { key: 'custom', label: 'カスタム', bg: '#fff', color: '#222', sec: '#bbb', font: 'Arial, sans-serif' },
-];
 
 // AmbientLightSensor型が存在しない場合の型定義
 interface AmbientLightSensor extends EventTarget {
@@ -135,10 +198,21 @@ interface AmbientLightSensor extends EventTarget {
   addEventListener(type: "reading", listener: () => void): void;
 }
 
+function pad(num: number) {
+  return num.toString().padStart(2, "0");
+}
+
 export default function Home() {
   const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 100);
+    return () => clearInterval(timer);
+  }, []);
   const [ambient, setAmbient] = useState<number | null>(null);
   const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualTheme, setManualTheme] = useState<null | string>(null);
   const [hourMode, setHourMode] = useState<'24'|'12'>('24');
@@ -155,19 +229,35 @@ export default function Home() {
   const [activePage, setActivePage] = useState('home'); // home, countdown, countup, pomodoro, fullscreen, settings
   const { theme: contextTheme } = useTheme();
 
-  // 全画面切り替え
-  const handleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  };
-  useEffect(() => { setIsClient(true); }, []);
+  // 日の出・日の入り時刻を管理するstateを追加
+  const [sunTimes, setSunTimes] = useState<{sunrise: Date|null, sunset: Date|null}|null>(null);
+  const [geoError, setGeoError] = useState<string|null>(null);
 
+  // Geolocation + Sunrise-Sunset APIでその日の時刻を取得
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 100);
-    return () => clearInterval(timer);
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation not supported');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        fetch(`https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&formatted=0`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'OK') {
+              setSunTimes({
+                sunrise: new Date(data.results.sunrise),
+                sunset: new Date(data.results.sunset)
+              });
+            } else {
+              setGeoError('Failed to get sun times');
+            }
+          })
+          .catch(() => setGeoError('Failed to fetch sun times'));
+      },
+      (err) => setGeoError('Failed to get location')
+    );
   }, []);
 
   // Ambient Light Sensor（部屋の明るさ）
@@ -206,7 +296,7 @@ export default function Home() {
         if (idx >= 0) t = { ...themes[idx], name: manualTheme, font: contextTheme.font };
       } else {
         // manualThemeが未指定または'auto'なら、現在時刻・ambientで動的に決定（now, ambient依存で毎回再計算）
-        t = { ...getTimeTheme(now, ambient), font: contextTheme.font };
+        t = { ...getTimeThemeDynamic(now, ambient, sunTimes), font: contextTheme.font };
       }
     } else if (selectedPreset === 'custom') {
       t = { ...customTheme, name: 'custom', font: customTheme.font };
@@ -226,11 +316,42 @@ export default function Home() {
       sec: t?.sec ?? '#888888',
       fontFamily: fontFamily ?? 'Arial, sans-serif',
     };
-  }, [contextTheme, manualTheme, selectedPreset, customTheme, now, ambient]);
+  }, [contextTheme, manualTheme, selectedPreset, customTheme, now, ambient, sunTimes]);
   const fontFamily = theme.fontFamily;
 
   // デバッグ表示用
-  const debugStr = `${h}:${m}:${s} / theme: ${theme.name}`;
+  // 現在地（緯度・経度）と次のイベント（日の出/日の入り）
+  const [geo, setGeo] = useState<{lat: number, lng: number}|null>(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setGeo(null)
+    );
+  }, []);
+
+  let nextEventStr = '';
+  if (sunTimes && sunTimes.sunrise && sunTimes.sunset) {
+    const nowTime = now.getTime();
+    const sunrise = sunTimes.sunrise.getTime();
+    const sunset = sunTimes.sunset.getTime();
+    let nextLabel = '';
+    let nextTime = 0;
+    if (nowTime < sunrise && (sunrise < sunset || nowTime > sunset)) {
+      nextLabel = '日の出';
+      nextTime = sunrise;
+    } else if (nowTime < sunset) {
+      nextLabel = '日の入り';
+      nextTime = sunset;
+    } else {
+      nextLabel = '日の出';
+      nextTime = sunrise + 24*60*60*1000; // 翌日
+    }
+    const d = new Date(nextTime);
+    nextEventStr = `${nextLabel}: ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  }
+  const debugStr = `${h}:${m}:${s} / theme: ${theme.name}` +
+    (nextEventStr ? ` / ${nextEventStr}` : '');
 
   // 日付・曜日の文字列
   const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
@@ -290,7 +411,7 @@ export default function Home() {
         <AnimatedNumber value={s} className={styles.second} style={{ color: theme.sec }} />
       </div>
       {isClient && (
-        <div style={{position:'fixed',bottom:8,left:0,right:0,textAlign:'center',fontSize:'12px',color:'#888',pointerEvents:'none',zIndex:99}}>{debugStr}</div>
+        <div style={{position:'fixed',bottom:8,left:0,right:0,textAlign:'center',fontSize:'12px',color:'#888',pointerEvents:'none',zIndex:99,opacity:0.7}}>{debugStr}</div>
       )}
     </div>
   );
