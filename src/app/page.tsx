@@ -54,7 +54,7 @@ const themeCenters = [
 // HEXカラーをRGB配列に変換
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (!m) throw new Error('Invalid hex');
+  if (!m) return [255, 255, 255]; // 不正なhexなら白を返す
   return [parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)];
 }
 // RGB配列をHEXに
@@ -63,6 +63,8 @@ function rgbToHex(rgb: [number,number,number]): string {
 }
 // 2色をtで補間
 function lerpColor(a: string, b: string, t: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(a)) a = '#ffffff';
+  if (!/^#[0-9a-f]{6}$/i.test(b)) b = '#ffffff';
   const ar = hexToRgb(a), br = hexToRgb(b);
   return rgbToHex([
     Math.round(ar[0]+(br[0]-ar[0])*t),
