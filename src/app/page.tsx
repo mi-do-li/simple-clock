@@ -67,6 +67,13 @@ const themes = [
     bg: "#223366", // 以前の夕方色
     color: "#fff",
     sec: "#aabbee"
+  },
+  // dusk（ほんの少し暗めの水色）
+  {
+    name: "dusk",
+    bg: "#3a4a6d",
+    color: "#e0f7fa",
+    sec: "#7fd6e6"
   }
 ];
 
@@ -152,6 +159,7 @@ function getTimeThemeDynamic(date: Date, ambient: number | null, sunTimes: {sunr
   // 夕方: 昼の終わり〜日の入り+30分
   const eveningStart = sunset - 60*60*1000; // 日の入り1時間前
   const eveningPeak = sunset - 10*60*1000; // 日の入り10分前
+  const duskEnd = sunset + 10*60*1000; // 日の入り+10分
   const eveningEnd = sunset + 30*60*1000;  // 日の入り30分後
   // 夜: それ以外
   if (now >= morningStart && now < morningEnd) {
@@ -174,6 +182,24 @@ function getTimeThemeDynamic(date: Date, ambient: number | null, sunTimes: {sunr
       color: lerpColor(themes[1].color, themes[2].color, t),
       sec: lerpColor(themes[1].sec, themes[2].sec, t),
       name: 'day-evening'
+    };
+  } else if (now >= eveningPeak && now < duskEnd) {
+    // 夕方色→dusk
+    const t = (now - eveningPeak) / (duskEnd - eveningPeak);
+    return {
+      bg: lerpColor(themes[2].bg, themes[4].bg, t),
+      color: lerpColor(themes[2].color, themes[4].color, t),
+      sec: lerpColor(themes[2].sec, themes[4].sec, t),
+      name: 'evening-dusk'
+    };
+  } else if (now >= duskEnd && now < eveningEnd) {
+    // dusk→夜色へ補間
+    const t = (now - duskEnd) / (eveningEnd - duskEnd);
+    return {
+      bg: lerpColor(themes[4].bg, themes[3].bg, t),
+      color: lerpColor(themes[4].color, themes[3].color, t),
+      sec: lerpColor(themes[4].sec, themes[3].sec, t),
+      name: 'dusk-night'
     };
   } else if (now >= eveningPeak && now < eveningEnd) {
     // 夕方色→夜色へ補間
