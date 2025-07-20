@@ -69,59 +69,69 @@ export default function Weather({ color, infoSettings }: { color: string, infoSe
     );
   }, []);
 
-  // 現在の気温・天気・都市名
+  // 現在の気温・天気・都市名（1分ごとに自動更新）
   useEffect(() => {
     if (!geo) return;
-    const urlCurrent = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lng}&current_weather=true&timezone=auto`;
-    fetch(urlCurrent)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.current_weather && typeof data.current_weather.temperature === 'number') {
-          const temp = `${Math.round(data.current_weather.temperature)}°C`;
-          const code = data.current_weather.weathercode;
-          const weatherJa = weatherCodeToJa[code] || "不明";
-          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${geo.lat}&lon=${geo.lng}&format=json`)
-            .then((res) => res.json())
-            .then((geoData) => {
-              const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || geoData.address?.state || "";
-              setCurrent(`${temp} ${weatherJa}${city ? ` / ${city}` : ""}`);
-            })
-            .catch(() => setCurrent(`${temp} ${weatherJa}`));
-        } else {
-          setCurrent("気温取得失敗");
-        }
-      })
-      .catch(() => setCurrent("気温取得失敗"));
+    const fetchCurrent = () => {
+      const urlCurrent = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lng}&current_weather=true&timezone=auto`;
+      fetch(urlCurrent)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.current_weather && typeof data.current_weather.temperature === 'number') {
+            const temp = `${Math.round(data.current_weather.temperature)}°C`;
+            const code = data.current_weather.weathercode;
+            const weatherJa = weatherCodeToJa[code] || "不明";
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${geo.lat}&lon=${geo.lng}&format=json`)
+              .then((res) => res.json())
+              .then((geoData) => {
+                const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || geoData.address?.state || "";
+                setCurrent(`${temp} ${weatherJa}${city ? ` / ${city}` : ""}`);
+              })
+              .catch(() => setCurrent(`${temp} ${weatherJa}`));
+          } else {
+            setCurrent("気温取得失敗");
+          }
+        })
+        .catch(() => setCurrent("気温取得失敗"));
+    };
+    fetchCurrent();
+    const timer = setInterval(fetchCurrent, 60 * 1000);
+    return () => clearInterval(timer);
   }, [geo]);
 
-  // 明日の予報
+  // 明日の予報（1分ごとに自動更新）
   useEffect(() => {
     if (!geo) return;
-    const urlForecast = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lng}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`;
-    fetch(urlForecast)
-      .then((res) => res.json())
-      .then((data) => {
-        if (
-          data.daily &&
-          data.daily.temperature_2m_max &&
-          data.daily.temperature_2m_min &&
-          data.daily.weathercode &&
-          data.daily.time
-        ) {
-          const tomorrow = 1;
-          const tmax = data.daily.temperature_2m_max;
-          const tmin = data.daily.temperature_2m_min;
-          const wcode = data.daily.weathercode;
-          const weatherJa = weatherCodeToJa[wcode[tomorrow]] || "不明";
-          setForecast(`明日 ${Math.round(tmax[tomorrow])}°C / ${Math.round(tmin[tomorrow])}°C ${weatherJa}`);
-        } else {
-          setForecast("天気取得失敗");
-        }
-      })
-      .catch(() => setForecast("天気取得失敗"));
+    const fetchForecast = () => {
+      const urlForecast = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lng}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`;
+      fetch(urlForecast)
+        .then((res) => res.json())
+        .then((data) => {
+          if (
+            data.daily &&
+            data.daily.temperature_2m_max &&
+            data.daily.temperature_2m_min &&
+            data.daily.weathercode &&
+            data.daily.time
+          ) {
+            const tomorrow = 1;
+            const tmax = data.daily.temperature_2m_max;
+            const tmin = data.daily.temperature_2m_min;
+            const wcode = data.daily.weathercode;
+            const weatherJa = weatherCodeToJa[wcode[tomorrow]] || "不明";
+            setForecast(`明日 ${Math.round(tmax[tomorrow])}°C / ${Math.round(tmin[tomorrow])}°C ${weatherJa}`);
+          } else {
+            setForecast("天気取得失敗");
+          }
+        })
+        .catch(() => setForecast("天気取得失敗"));
+    };
+    fetchForecast();
+    const timer = setInterval(fetchForecast, 60 * 1000);
+    return () => clearInterval(timer);
   }, [geo]);
 
-  // ニュース取得（/api/news経由、3分ごとに自動更新、最新5件をスライド）
+  // ニュース取得（/api/news経由、1分ごとに自動更新、最新5件をスライド）
   useEffect(() => {
     const fetchNews = () => {
       fetch('/api/news')
@@ -141,11 +151,11 @@ export default function Weather({ color, infoSettings }: { color: string, infoSe
         return prev;
       });
       fetchNews();
-    }, 3 * 60 * 1000);
+    }, 60 * 1000);
     return () => clearInterval(timer);
   }, [newsList.length]);
 
-  // 為替レート取得（/api/exchange経由、3分ごとに自動更新）
+  // 為替レート取得（/api/exchange経由、1分ごとに自動更新）
   useEffect(() => {
     const fetchExchange = () => {
       fetch('/api/exchange')
@@ -157,7 +167,7 @@ export default function Weather({ color, infoSettings }: { color: string, infoSe
         });
     };
     fetchExchange();
-    const timer = setInterval(fetchExchange, 3 * 60 * 1000);
+    const timer = setInterval(fetchExchange, 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -217,26 +227,30 @@ export default function Weather({ color, infoSettings }: { color: string, infoSe
       });
   }, [geo]);
 
-  // 警報・注意報
+  // 警報・注意報（1分ごとに自動更新）
   useEffect(() => {
     if (!geo) return;
-    // 逆ジオコーディングで都道府県名を取得
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${geo.lat}&lon=${geo.lng}&format=json`)
-      .then(res => res.json())
-      .then(geoData => {
-        const pref = geoData.address?.state || geoData.address?.province || geoData.address?.region || "";
-        if (!pref) return;
-        // 警報・注意報API
-        fetch(`/api/alert?pref=${encodeURIComponent(pref)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.alerts && data.alerts.length > 0) {
-              setAlert(data.alerts[0]); // 1件だけ表示
-            } else {
-              setAlert("");
-            }
-          });
-      });
+    const fetchAlert = () => {
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${geo.lat}&lon=${geo.lng}&format=json`)
+        .then(res => res.json())
+        .then(geoData => {
+          const pref = geoData.address?.state || geoData.address?.province || geoData.address?.region || "";
+          if (!pref) return;
+          // 警報・注意報API
+          fetch(`/api/alert?pref=${encodeURIComponent(pref)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.alerts && data.alerts.length > 0) {
+                setAlert(data.alerts[0]); // 1件だけ表示
+              } else {
+                setAlert("");
+              }
+            });
+        });
+    };
+    fetchAlert();
+    const timer = setInterval(fetchAlert, 60 * 1000);
+    return () => clearInterval(timer);
   }, [geo]);
 
   // slides配列を更新

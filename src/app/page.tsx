@@ -218,6 +218,10 @@ function pad(num: number) {
   return num.toString().padStart(2, "0");
 }
 
+function toJST(date: Date) {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000);
+}
+
 export default function Home() {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -238,7 +242,7 @@ export default function Home() {
   // 日の出・日の入り時刻を管理するstateを追加
   const [sunTimes, setSunTimes] = useState<{sunrise: Date|null, sunset: Date|null}|null>(null);
 
-  // Geolocation + Sunrise-Sunset APIでその日の時刻を取得
+  // Geolocation + Sunrise-Sunset APIでその日の時刻を取得（JST変換）
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -249,8 +253,8 @@ export default function Home() {
           .then(data => {
             if (data.status === 'OK') {
               setSunTimes({
-                sunrise: new Date(data.results.sunrise),
-                sunset: new Date(data.results.sunset)
+                sunrise: toJST(new Date(data.results.sunrise)),
+                sunset: toJST(new Date(data.results.sunset))
               });
             }
           });
