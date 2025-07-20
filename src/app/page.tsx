@@ -68,12 +68,12 @@ const themes = [
     color: "#fff",
     sec: "#aabbee"
   },
-  // dusk（ほんの少し暗めの水色）
+  // dusk（紺と水色の中間、白文字で見やすく）
   {
     name: "dusk",
-    bg: "#3a4a6d",
-    color: "#e0f7fa",
-    sec: "#7fd6e6"
+    bg: "#466fa3",
+    color: "#fff",
+    sec: "#aaddff"
   }
 ];
 
