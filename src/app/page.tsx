@@ -174,15 +174,15 @@ export default function Home() {
     if ("AmbientLightSensor" in window) {
       // @ts-expect-error: AmbientLightSensor is not standard in all browsers
       sensor = new window.AmbientLightSensor();
-      sensor.addEventListener("reading", () => {
-        if (typeof sensor !== 'undefined') setAmbient(sensor.illuminance);
+      sensor!.addEventListener("reading", () => {
+        setAmbient(sensor!.illuminance);
       });
-      sensor.start();
+      sensor!.start();
     } else {
       setAmbient(null);
     }
     return () => {
-      if (typeof sensor !== 'undefined') {
+      if (sensor) {
         sensor.stop();
       }
     };
