@@ -948,3 +948,25 @@ a.secondary {
   opacity: 0.8;
   color: var(--theme-color, #222);
 }
+
+@media (max-width: 600px) {
+  .minimalClockBg {
+    padding: 0 0 48px 0; /* 下部余白を増やす */
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  .minimalClockWrapper {
+    padding: 0;
+    margin: 0;
+  }
+  .minimalClockCenter {
+    font-size: 2.2em; /* 時計の数字を小さく */
+  }
+  .minimalClockSec {
+    position: static !important; /* 固定をやめて通常フローに */
+    text-align: center;
+    font-size: 1.3em;
+    margin-top: 8px;
+    margin-bottom: 0;
+  }
+}
