@@ -242,19 +242,20 @@ export default function Home() {
   // 日の出・日の入り時刻を管理するstateを追加
   const [sunTimes, setSunTimes] = useState<{sunrise: Date|null, sunset: Date|null}|null>(null);
 
-  // Geolocation + Sunrise-Sunset APIでその日の時刻を取得（JST変換）
+  // Open-Meteo APIでJSTの日の出・日の入りを取得
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        fetch(`https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&formatted=0`)
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=sunrise,sunset&timezone=Asia%2FTokyo`;
+        fetch(url)
           .then(res => res.json())
           .then(data => {
-            if (data.status === 'OK') {
+            if (data.daily && data.daily.sunrise && data.daily.sunset) {
               setSunTimes({
-                sunrise: toJST(new Date(data.results.sunrise)),
-                sunset: toJST(new Date(data.results.sunset))
+                sunrise: new Date(data.daily.sunrise[0]),
+                sunset: new Date(data.daily.sunset[0])
               });
             }
           });
