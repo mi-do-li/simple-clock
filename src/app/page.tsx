@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import styles from "./page.module.css";
 import Weather from "./components/Weather";
 import Sidebar from "./components/Sidebar";
@@ -27,7 +27,6 @@ const presetThemes = [
   { key: 'summer', label: '夏', bg: '#e0f7fa', color: '#00796b', sec: '#4dd0e1', font: 'Noto Sans JP, sans-serif' },
   { key: 'autumn', label: '秋', bg: '#fff3e0', color: '#b26a00', sec: '#ffb74d', font: 'Noto Sans JP, sans-serif' },
   { key: 'winter', label: '冬', bg: '#e3f2fd', color: '#1565c0', sec: '#90caf9', font: 'Noto Sans JP, sans-serif' },
-  { key: 'custom', label: 'カスタム', bg: '#fff', color: '#222', sec: '#bbb', font: 'Arial, sans-serif' },
 ];
 
 function handleFullscreen() {
@@ -64,7 +63,7 @@ const themes = [
   // 夜（紺色）
   {
     name: "night",
-    bg: "#223366", // 以前の夕方色
+    bg: "#223366",
     color: "#fff",
     sec: "#aabbee"
   },
@@ -240,20 +239,10 @@ export default function Home() {
     setIsClient(true);
   }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [manualTheme, setManualTheme] = useState<null | string>(null);
+  const { theme, setTheme } = useTheme();
   const [hourMode, setHourMode] = useState<'24'|'12'>('24');
-  const [selectedPreset, setSelectedPreset] = useState<string|null>(null); // null=時間帯テーマ
-  const [customTheme, setCustomTheme] = useState({ bg: '#fff', color: '#222', sec: '#bbb', font: 'Arial, sans-serif' });
-  const handleThemeChange = useCallback((key: string) => {
-    setManualTheme(key === "auto" ? null : key);
-    // 時間帯テーマ詳細（themeOptions）選択時は設定を閉じない
-    if (!themeOptions.some(opt => opt.key === key)) {
-      setSettingsOpen(false);
-    }
-  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState('home'); // home, countdown, countup, pomodoro, fullscreen, settings
-  const { theme: contextTheme } = useTheme();
 
   // 日の出・日の入り時刻を管理するstateを追加
   const [sunTimes, setSunTimes] = useState<{sunrise: Date|null, sunset: Date|null}|null>(null);
@@ -306,44 +295,40 @@ export default function Home() {
     };
   }, []);
 
-  const h24 = now.getHours();
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  const h = pad(hourMode === '24' ? h24 : h12);
-  const m = pad(now.getMinutes());
-  const s = pad(now.getSeconds());
-  // テーマ分岐をuseMemoでまとめる
-  const theme = useMemo(() => {
-    let t;
-    let fontFamily = '';
-    if (!selectedPreset) {
-      // 時間帯テーマ
-      if (manualTheme && manualTheme !== "auto") {
-        const idx = themeOptions.findIndex(opt => opt.key === manualTheme) - 1;
-        if (idx >= 0) t = { ...themes[idx], name: manualTheme, font: contextTheme.font };
-      } else {
-        // manualThemeが未指定または'auto'なら、現在時刻・ambientで動的に決定（now, ambient依存で毎回再計算）
-        t = { ...getTimeThemeDynamic(now, ambient, sunTimes), font: contextTheme.font };
-      }
-    } else if (selectedPreset === 'custom') {
-      t = { ...customTheme, name: 'custom', font: customTheme.font };
-      fontFamily = customTheme.font;
-    } else {
-      const preset = presetThemes.find(pt => pt.key === selectedPreset);
-      if (preset) {
-        t = { bg: preset.bg, color: preset.color, sec: preset.sec, name: preset.label, font: preset.font };
-        fontFamily = preset.font;
-      }
+  // 情報表示設定
+  const defaultInfoSettings = {
+    weather: true,
+    forecast: true,
+    news: true,
+    holiday: true,
+    exchange: true,
+    sun: true,
+  };
+  const [infoSettings, setInfoSettings] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('infoSettings');
+      if (saved) return JSON.parse(saved);
     }
-    // 型安全のため、string型で返す
-    return {
-      ...t,
-      bg: t?.bg ?? '#ffffff',
-      color: t?.color ?? '#000000',
-      sec: t?.sec ?? '#888888',
-      fontFamily: fontFamily ?? 'Arial, sans-serif',
-    };
-  }, [contextTheme, manualTheme, selectedPreset, customTheme, now, ambient, sunTimes]);
-  const fontFamily = theme.fontFamily;
+    return defaultInfoSettings;
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('infoSettings', JSON.stringify(infoSettings));
+    }
+  }, [infoSettings]);
+
+  // テーマ分岐をuseMemoでまとめる
+  // theme.name==='auto'のときはgetTimeThemeDynamicで色を決定
+  const displayTheme = theme.name === 'auto'
+    ? { ...getTimeThemeDynamic(now, ambient, sunTimes), font: theme.font, name: 'auto' }
+    : theme;
+  const fontFamily = displayTheme.font;
+
+  // テーマ切り替えUI例
+  // <button onClick={() => setTheme({ ...theme, bg: "#222", color: "#fff", name: "dark" })}>ダーク</button>
+  // <button onClick={() => setTheme({ ...theme, bg: "#fff", color: "#222", name: "light" })}>ライト</button>
+  // カスタムテーマ編集例
+  // <input type="color" value={theme.bg} onChange={e => setTheme({ ...theme, bg: e.target.value })} />
 
   // デバッグ表示用
   // 現在地（緯度・経度）と次のイベント（日の出/日の入り）
@@ -355,6 +340,12 @@ export default function Home() {
       () => setGeo(null)
     );
   }, []);
+
+  const h24 = now.getHours();
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const h = pad(hourMode === '24' ? h24 : h12);
+  const m = pad(now.getMinutes());
+  const s = pad(now.getSeconds());
 
   let nextEventStr = '';
   if (sunTimes && sunTimes.sunrise && sunTimes.sunset) {
@@ -382,8 +373,17 @@ export default function Home() {
   // 日付・曜日の文字列
   const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
+  // 画面幅でモバイル判定
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 600);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // ハンバーガーメニューアイコン
-  const HamburgerIcon = (
+  const HamburgerIcon = (!isMobile || !settingsOpen) && (
     <button
       className={styles.settingsIconBtn}
       aria-label="メニュー"
@@ -416,29 +416,34 @@ export default function Home() {
     </button>
   );
 
+  // isClientがtrueになるまでUIを描画しない
+  if (!isClient) {
+    return null;
+  }
+
   // メイン画面（時計・天気・日付）
   const MainContent = (
-    <div className={styles.minimalClockBg} style={{ background: theme.bg, fontFamily: fontFamily, position: 'relative' }}>
+    <div className={styles.minimalClockBg} style={{ background: displayTheme.bg, fontFamily: fontFamily, position: 'relative' }}>
       {HamburgerIcon}
       <div className={styles.minimalClockWrapper}>
         <div className={styles.minimalClockCenter}>
-          <AnimatedNumber value={h} className={styles.hour} style={{ color: theme.color }} />
-          <span className={styles.colon} style={{ color: theme.sec }} >:</span>
-          <AnimatedNumber value={m} className={styles.minute} style={{ color: theme.color }} />
+          <AnimatedNumber value={h} className={styles.hour} style={{ color: displayTheme.color }} />
+          <span className={styles.colon} style={{ color: displayTheme.sec }} >:</span>
+          <AnimatedNumber value={m} className={styles.minute} style={{ color: displayTheme.color }} />
         </div>
-        <div style={{fontSize:'1.3em',color:theme.color,fontWeight:500,lineHeight:1.3,margin:'0.2em 0',textAlign:'center'}}>
+        <div style={{fontSize:'1.3em',color:displayTheme.color,fontWeight:500,lineHeight:1.3,margin:'0.2em 0',textAlign:'center'}}>
           {dateStr}
         </div>
         <div className={styles.weatherWrapper}>
-          <Weather color={theme.color} />
+          <Weather color={displayTheme.color} infoSettings={infoSettings} />
         </div>
       </div>
       <div className={styles.minimalClockSec}>
-        <AnimatedNumber value={s} className={styles.second} style={{ color: theme.sec }} />
+        <AnimatedNumber value={s} className={styles.second} style={{ color: displayTheme.sec }} />
       </div>
-      {isClient && (
+      {/* {isClient && (
         <div style={{position:'fixed',bottom:8,left:0,right:0,textAlign:'center',fontSize:'12px',color:'#888',pointerEvents:'none',zIndex:99,opacity:0.7}}>{debugStr}</div>
-      )}
+      )} */}
     </div>
   );
 
@@ -475,68 +480,42 @@ export default function Home() {
         open={sidebarOpen}
         onNavigate={handleSidebarNavigate}
         active={activePage}
-        theme={theme}
+        theme={displayTheme}
       />
       {/* 設定ポップアップ */}
       {settingsOpen && (
         <div className={styles.settingsPopup}>
           <button className={styles.settingsPopupClose} onClick={() => setSettingsOpen(false)} aria-label="閉じる">×</button>
           <div className={styles.settingsPopupTitle}>設定</div>
+          {/* 情報表示設定 */}
+          <div className={styles.settingsPopupSection}>
+            <div style={{fontWeight:500,marginBottom:4}}>表示する情報</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <label><input type="checkbox" checked={infoSettings.weather} onChange={e => setInfoSettings((s: typeof infoSettings) => ({...s, weather: e.target.checked}))}/> 現在の天気</label>
+              <label><input type="checkbox" checked={infoSettings.forecast} onChange={e => setInfoSettings((s: typeof infoSettings) => ({...s, forecast: e.target.checked}))}/> 明日の天気</label>
+              <label><input type="checkbox" checked={infoSettings.news} onChange={e => setInfoSettings((s: typeof infoSettings) => ({...s, news: e.target.checked}))}/> ニュース</label>
+              <label><input type="checkbox" checked={infoSettings.holiday} onChange={e => setInfoSettings((s: typeof infoSettings) => ({...s, holiday: e.target.checked}))}/> 祝日情報</label>
+              <label><input type="checkbox" checked={infoSettings.exchange} onChange={e => setInfoSettings((s: typeof infoSettings) => ({...s, exchange: e.target.checked}))}/> 為替</label>
+              <label><input type="checkbox" checked={infoSettings.sun} onChange={e => setInfoSettings((s: typeof infoSettings) => ({...s, sun: e.target.checked}))}/> 日の出/日の入り</label>
+            </div>
+          </div>
           {/* テーマ選択 */}
           <div className={styles.settingsPopupSection}>
             <div style={{fontWeight:500,marginBottom:4}}>テーマ</div>
             <div className={styles.settingsPopupRadioGroup}>
-              <button
-                className={styles.themePanelBtn + (!selectedPreset ? ' ' + styles.selected : '')}
-                onClick={() => setSelectedPreset(null)}
-              >時間帯テーマ</button>
               {presetThemes.map(t => (
                 <button
                   key={t.key}
-                  className={styles.themePanelBtn + (selectedPreset === t.key ? ' ' + styles.selected : '')}
-                  onClick={() => setSelectedPreset(t.key)}
+                  className={styles.themePanelBtn + (theme.name === t.key ? ' ' + styles.selected : '')}
+                  onClick={() => setTheme({ ...theme, ...t, name: t.key, font: t.font })}
                 >{t.label}</button>
               ))}
+              <button
+                className={styles.themePanelBtn + (theme.name === 'auto' ? ' ' + styles.selected : '')}
+                onClick={() => setTheme({ ...theme, name: 'auto' })}
+              >自動</button>
             </div>
           </div>
-          {/* 時間帯テーマ選択時だけ下に自動/テーマボタン群を表示 */}
-          {!selectedPreset && (
-            <div className={styles.settingsPopupSection}>
-              <div style={{fontWeight:500,marginBottom:4}}>時間帯テーマ詳細</div>
-              <div className={styles.settingsPopupRadioGroup}>
-                {themeOptions.map(opt => (
-                  <button
-                    key={opt.key}
-                    className={styles.themePanelBtn + (manualTheme === opt.key || (!manualTheme && opt.key === "auto") ? ' ' + styles.selected : '')}
-                    onClick={() => handleThemeChange(opt.key)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* カスタムテーマ編集UI */}
-          {selectedPreset === 'custom' && (
-            <div className={styles.settingsPopupSection}>
-              <div style={{fontWeight:500,marginBottom:4}}>カスタムテーマ編集</div>
-              <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                <label>背景色 <input type="color" value={customTheme.bg} onChange={e => setCustomTheme(v => ({...v, bg: e.target.value}))} /></label>
-                <label>文字色 <input type="color" value={customTheme.color} onChange={e => setCustomTheme(v => ({...v, color: e.target.value}))} /></label>
-                <label>秒の色 <input type="color" value={customTheme.sec} onChange={e => setCustomTheme(v => ({...v, sec: e.target.value}))} /></label>
-                <label>フォント
-                  <select value={customTheme.font} onChange={e => setCustomTheme(v => ({...v, font: e.target.value}))}>
-                    <option value="Arial, sans-serif">Arial</option>
-                    <option value="Noto Sans JP, sans-serif">Noto Sans JP</option>
-                    <option value="Courier New, monospace">Courier New</option>
-                    <option value="Montserrat, sans-serif">Montserrat</option>
-                    <option value="'Times New Roman', serif">Times New Roman</option>
-                    <option value="'Inter', 'Roboto Mono', 'Menlo', monospace">Inter/Roboto Mono</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-          )}
           {/* 時刻表記 */}
           <div className={styles.settingsPopupSection}>
             <div style={{fontWeight:500,marginBottom:4}}>時刻表記</div>
