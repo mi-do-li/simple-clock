@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, ChangeEvent, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import styles from "./page.module.css";
 import Weather from "./components/Weather";
 import Sidebar from "./components/Sidebar";
@@ -50,13 +50,6 @@ const themeCenters = [
   18,    // 夕: 17-19時 → 中心18:00
   23,    // 夜: 19-翌5時 → 中心23:00（夜は19-29時=翌5時）
 ];
-// テーマごとの開始・終了時刻
-const themeRanges = [
-  [5, 8],    // 朝
-  [8, 17],   // 昼
-  [17, 19],  // 夕
-  [19, 29],  // 夜（29=翌5時）
-];
 
 // HEXカラーをRGB配列に変換
 function hexToRgb(hex: string): [number, number, number] {
@@ -86,16 +79,14 @@ function getTimeTheme(date: Date, ambient: number | null) {
   const hour = date.getHours() + date.getMinutes()/60;
   const centers = themeCenters;
   const n = centers.length;
-  let idx = -1;
-  let h = hour;
+  const h = hour;
   for (let i = 0; i < n; ++i) {
-    let c0 = centers[i];
+    const c0 = centers[i];
     let c1 = centers[(i+1)%n];
     if (c1 <= c0) c1 += 24; // 夜→朝またぎ対応
     let hh = h;
     if (hh < c0) hh += 24; // 23時台→翌6時台の補間対応
     if (hh >= c0 && hh < c1) {
-      idx = i;
       const t = (hh - c0) / (c1 - c0);
       const fromTheme = themes[i];
       const toTheme = themes[(i+1)%n];
@@ -134,26 +125,13 @@ const presetThemes = [
   { key: 'custom', label: 'カスタム', bg: '#fff', color: '#222', sec: '#bbb', font: 'Arial, sans-serif' },
 ];
 
-// 長押しで連続インクリメント/デクリメント用の共通フック
-function useLongPressAdjust(onAdjust: (delta: number) => void) {
-  const timerRef = useRef<NodeJS.Timeout|null>(null);
-  const speedRef = useRef(300);
-  const handlePress = (delta: number) => {
-    onAdjust(delta);
-    speedRef.current = 300;
-    const repeat = () => {
-      onAdjust(delta);
-      speedRef.current = Math.max(40, speedRef.current * 0.7);
-      timerRef.current = setTimeout(repeat, speedRef.current);
-    };
-    timerRef.current = setTimeout(repeat, speedRef.current);
-  };
-  const handleRelease = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    speedRef.current = 300;
-  };
-  return { handlePress, handleRelease };
+// AmbientLightSensor型が存在しない場合の型定義
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface AmbientLightSensor extends EventTarget {
+  illuminance: number;
+  start: () => void;
+  stop: () => void;
+  addEventListener(type: "reading", listener: () => void): void;
 }
 
 export default function Home() {
@@ -172,29 +150,16 @@ export default function Home() {
       setSettingsOpen(false);
     }
   }, []);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState('home'); // home, countdown, countup, pomodoro, fullscreen, settings
   const { theme: contextTheme } = useTheme();
-  const [sidebarAnimating, setSidebarAnimating] = useState(false);
-  useEffect(() => {
-    if (sidebarOpen) {
-      setSidebarAnimating(true);
-    } else {
-      setSidebarAnimating(true);
-      const timer = setTimeout(() => setSidebarAnimating(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [sidebarOpen]);
 
   // 全画面切り替え
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen();
-      setIsFullscreen(false);
     }
   };
   useEffect(() => { setIsClient(true); }, []);
@@ -206,18 +171,22 @@ export default function Home() {
 
   // Ambient Light Sensor（部屋の明るさ）
   useEffect(() => {
-    let sensor: any;
+    let sensor: AmbientLightSensor | undefined = undefined;
     if ("AmbientLightSensor" in window) {
-      // @ts-ignore
+      // @ts-expect-error
       sensor = new window.AmbientLightSensor();
       sensor.addEventListener("reading", () => {
-        setAmbient(sensor.illuminance);
+        if (sensor !== undefined) setAmbient(sensor.illuminance);
       });
       sensor.start();
     } else {
       setAmbient(null);
     }
-    return () => { if (sensor) sensor.stop(); };
+    return () => {
+      if (sensor !== undefined) {
+        sensor.stop();
+      }
+    };
   }, []);
 
   const h24 = now.getHours();
@@ -340,7 +309,7 @@ export default function Home() {
   };
 
   // ページ切り替え
-  let pageContent = MainContent;
+  const pageContent = MainContent;
   // ページ切り替え
 
   return (

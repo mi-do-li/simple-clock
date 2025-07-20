@@ -1,12 +1,19 @@
 import React from "react";
 
-export default function Sidebar({ open, onClose, onNavigate, active, theme }: {
+interface Theme {
+  bg: string;
+  color: string;
+  sec: string;
+}
+
+interface SidebarProps {
   open: boolean;
-  onClose: () => void;
   onNavigate: (page: string) => void;
   active: string;
-  theme: any;
-}) {
+  theme: Theme;
+}
+
+export default function Sidebar({ open, onNavigate, active, theme }: SidebarProps) {
   return (
     <div
       style={{
