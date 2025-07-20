@@ -9,6 +9,16 @@ function fetchWithTimeout(resource: string, options: any = {}) {
   ]);
 }
 
+function hasTitle(item: unknown): item is { title: string[] } {
+  return (
+    !!item &&
+    typeof item === 'object' &&
+    'title' in item &&
+    Array.isArray((item as { title?: unknown }).title) &&
+    typeof (item as { title: string[] }).title[0] === 'string'
+  );
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const pref = searchParams.get('pref');
@@ -31,10 +41,8 @@ export async function GET(req: NextRequest) {
     let items = json?.rss?.channel?.[0]?.item;
     if (!Array.isArray(items)) items = [items];
     const alerts = (items || [])
-      .filter((item: unknown): item is { title: string[] } =>
-        !!item && typeof item === 'object' && Array.isArray((item as { title?: unknown }).title) && typeof (item as { title: unknown[] }).title[0] === 'string'
-      )
-      .map((item) => item.title[0])
+      .filter(hasTitle)
+      .map((item: { title: string[] }) => item.title[0])
       .filter((title: string) => title.includes(pref));
     return NextResponse.json({ alerts });
   } catch (e) {

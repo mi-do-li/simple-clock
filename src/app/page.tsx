@@ -321,27 +321,6 @@ export default function Home() {
   const m = pad(now.getMinutes());
   const s = pad(now.getSeconds());
 
-  let nextEventStr = '';
-  if (sunTimes && sunTimes.sunrise && sunTimes.sunset) {
-    const nowTime = now.getTime();
-    const sunrise = sunTimes.sunrise.getTime();
-    const sunset = sunTimes.sunset.getTime();
-    let nextLabel = '';
-    let nextTime = 0;
-    if (nowTime < sunrise && (sunrise < sunset || nowTime > sunset)) {
-      nextLabel = '日の出';
-      nextTime = sunrise;
-    } else if (nowTime < sunset) {
-      nextLabel = '日の入り';
-      nextTime = sunset;
-    } else {
-      nextLabel = '日の出';
-      nextTime = sunrise + 24*60*60*1000; // 翌日
-    }
-    const d = new Date(nextTime);
-    nextEventStr = `${nextLabel}: ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-  }
-
   // 日付・曜日の文字列
   const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
