@@ -73,23 +73,23 @@ function lerpColor(a: string, b: string, t: number): string {
 
 function getTimeTheme(date: Date, ambient: number | null) {
   if (ambient !== null && ambient < 30) {
-    // 暗い部屋は夜テーマを即適用
     return { ...themes[3], name: 'night' };
   }
-  const hour = date.getHours() + date.getMinutes()/60;
+  const hour = date.getHours() + date.getMinutes() / 60;
   const centers = themeCenters;
   const n = centers.length;
   const h = hour;
   for (let i = 0; i < n; ++i) {
     const c0 = centers[i];
-    let c1 = centers[(i+1)%n];
-    if (c1 <= c0) c1 += 24; // 夜→朝またぎ対応
+    let c1 = centers[(i + 1) % n];
+    if (c1 <= c0) c1 += 24;
     let hh = h;
-    if (hh < c0) hh += 24; // 23時台→翌6時台の補間対応
-    if (hh >= c0 && hh < c1) {
+    if (hh < c0) hh += 24;
+    // 区間の右端も含める
+    if (hh >= c0 && hh <= c1) {
       const t = (hh - c0) / (c1 - c0);
       const fromTheme = themes[i];
-      const toTheme = themes[(i+1)%n];
+      const toTheme = themes[(i + 1) % n];
       return {
         bg: lerpColor(fromTheme.bg, toTheme.bg, t),
         color: lerpColor(fromTheme.color, toTheme.color, t),
@@ -98,8 +98,8 @@ function getTimeTheme(date: Date, ambient: number | null) {
       };
     }
   }
-  // どれにも該当しない場合は昼
-  return { ...themes[1], name: 'day' };
+  // 念のため、どれにも該当しない場合は夜テーマを返す
+  return { ...themes[3], name: 'night' };
 }
 
 function AnimatedNumber({ value, className, style }: { value: string, className?: string, style?: React.CSSProperties }) {
