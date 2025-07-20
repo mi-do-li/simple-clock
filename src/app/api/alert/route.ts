@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseStringPromise } from "xml2js";
 
+interface AlertItem {
+  title: string[];
+}
+
 function fetchWithTimeout(resource: string, options: any = {}) {
   const { timeout = 10000 } = options;
   return Promise.race([
@@ -9,7 +13,7 @@ function fetchWithTimeout(resource: string, options: any = {}) {
   ]);
 }
 
-function hasTitle(item: unknown): item is { title: string[] } {
+function hasTitle(item: unknown): item is AlertItem {
   if (!item || typeof item !== 'object' || !('title' in item)) return false;
   const t = (item as { title?: unknown }).title;
   return Array.isArray(t) && typeof t[0] === 'string';
@@ -34,8 +38,9 @@ export async function GET(req: NextRequest) {
       console.error('alert xml parse error:', e);
       return NextResponse.json({ alerts: [] }, { status: 500 });
     }
-    let items: unknown[] = json?.rss?.channel?.[0]?.item;
-    if (!Array.isArray(items)) items = [items];
+    let items: AlertItem[] = Array.isArray(json?.rss?.channel?.[0]?.item)
+      ? (json.rss.channel[0].item as AlertItem[])
+      : [json?.rss?.channel?.[0]?.item as AlertItem];
     const alerts = items
       .filter(hasTitle)
       .map((item) => item.title[0])
