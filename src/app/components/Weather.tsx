@@ -46,7 +46,6 @@ export default function Weather({ color, infoSettings }: { color: string, infoSe
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [current, setCurrent] = useState<string>("取得中...");
   const [forecast, setForecast] = useState<string>("");
-  const [news, setNews] = useState<string>("東海地方で梅雨明け宣言"); // ダミー
   const [holiday, setHoliday] = useState<string>("");
   const [slides, setSlides] = useState<string[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);

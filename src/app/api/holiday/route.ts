@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
     const holidays = await res.json();
     const todayStr = `${yyyy}-${mm}-${dd}`;
     const tomorrowStr = `${yyyy}-${tmm}-${tdd}`;
-    const todayHoliday = holidays.find((h: any) => h.date === todayStr);
-    const tomorrowHoliday = holidays.find((h: any) => h.date === tomorrowStr);
+    const todayHoliday = holidays.find((h: { date: string }) => h.date === todayStr);
+    const tomorrowHoliday = holidays.find((h: { date: string }) => h.date === tomorrowStr);
     return NextResponse.json({ today: todayHoliday ? todayHoliday.localName : '', tomorrow: tomorrowHoliday ? tomorrowHoliday.localName : '' });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ today: '', tomorrow: '' }, { status: 500 });
   }
 } 

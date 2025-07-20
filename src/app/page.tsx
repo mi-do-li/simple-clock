@@ -1,24 +1,15 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./page.module.css";
 import Weather from "./components/Weather";
 import Sidebar from "./components/Sidebar";
 import { useTheme } from "./components/ThemeContext";
-import { useMemo } from "react";
 
 // AnimatedNumber, themeOptions, presetThemes, handleFullscreen などをHome関数の外に定義
 function AnimatedNumber({ value, className, style }: { value: string, className?: string, style?: React.CSSProperties }) {
   return <span className={className} style={style}>{value}</span>;
 }
-
-const themeOptions = [
-  { key: "auto", label: "自動" },
-  { key: "morning", label: "朝" },
-  { key: "day", label: "昼" },
-  { key: "evening", label: "夕" },
-  { key: "night", label: "夜" },
-];
 
 const presetThemes = [
   { key: 'retro', label: 'レトロ', bg: '#f5e9da', color: '#7c4f20', sec: '#bfa77a', font: 'Courier New, monospace' },
@@ -246,14 +237,10 @@ export default function Home() {
 
   // 日の出・日の入り時刻を管理するstateを追加
   const [sunTimes, setSunTimes] = useState<{sunrise: Date|null, sunset: Date|null}|null>(null);
-  const [geoError, setGeoError] = useState<string|null>(null);
 
   // Geolocation + Sunrise-Sunset APIでその日の時刻を取得
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGeoError('Geolocation not supported');
-      return;
-    }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -265,13 +252,9 @@ export default function Home() {
                 sunrise: new Date(data.results.sunrise),
                 sunset: new Date(data.results.sunset)
               });
-            } else {
-              setGeoError('Failed to get sun times');
             }
-          })
-          .catch(() => setGeoError('Failed to fetch sun times'));
-      },
-      (err) => setGeoError('Failed to get location')
+          });
+      }
     );
   }, []);
 
@@ -332,15 +315,6 @@ export default function Home() {
 
   // デバッグ表示用
   // 現在地（緯度・経度）と次のイベント（日の出/日の入り）
-  const [geo, setGeo] = useState<{lat: number, lng: number}|null>(null);
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setGeo(null)
-    );
-  }, []);
-
   const h24 = now.getHours();
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   const h = pad(hourMode === '24' ? h24 : h12);
@@ -367,8 +341,6 @@ export default function Home() {
     const d = new Date(nextTime);
     nextEventStr = `${nextLabel}: ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
   }
-  const debugStr = `${h}:${m}:${s} / theme: ${theme.name}` +
-    (nextEventStr ? ` / ${nextEventStr}` : '');
 
   // 日付・曜日の文字列
   const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });

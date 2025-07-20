@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 // テーマ型
 export interface Theme {

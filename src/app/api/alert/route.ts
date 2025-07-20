@@ -31,8 +31,10 @@ export async function GET(req: NextRequest) {
     let items = json?.rss?.channel?.[0]?.item;
     if (!Array.isArray(items)) items = [items];
     const alerts = (items || [])
-      .filter((item: any) => item && item.title && Array.isArray(item.title) && typeof item.title[0] === 'string')
-      .map((item: any) => item.title[0])
+      .filter((item: unknown): item is { title: string[] } =>
+        !!item && typeof item === 'object' && Array.isArray((item as { title?: unknown }).title) && typeof (item as { title: unknown[] }).title[0] === 'string'
+      )
+      .map((item) => item.title[0])
       .filter((title: string) => title.includes(pref));
     return NextResponse.json({ alerts });
   } catch (e) {

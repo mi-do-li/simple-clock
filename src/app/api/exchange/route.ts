@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const url = "https://api.frankfurter.app/latest?from=USD&to=JPY,EUR";
   try {
     console.log("fetching:", url);
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const usd = data.rates.JPY ?? null;
     const eur = data.rates.EUR ?? null;
     return NextResponse.json({ usd, eur });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ usd: null, eur: null }, { status: 500 });
   }
 } 
