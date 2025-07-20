@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import styles from "./page.module.css";
 import Weather from "./components/Weather";
 import Sidebar from "./components/Sidebar";
@@ -126,7 +126,6 @@ const presetThemes = [
 ];
 
 // AmbientLightSensor型が存在しない場合の型定義
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface AmbientLightSensor extends EventTarget {
   illuminance: number;
   start: () => void;
@@ -173,17 +172,17 @@ export default function Home() {
   useEffect(() => {
     let sensor: AmbientLightSensor | undefined = undefined;
     if ("AmbientLightSensor" in window) {
-      // @ts-expect-error
+      // @ts-expect-error: AmbientLightSensor is not standard in all browsers
       sensor = new window.AmbientLightSensor();
       sensor.addEventListener("reading", () => {
-        if (sensor !== undefined) setAmbient(sensor.illuminance);
+        if (typeof sensor !== 'undefined') setAmbient(sensor.illuminance);
       });
       sensor.start();
     } else {
       setAmbient(null);
     }
     return () => {
-      if (sensor !== undefined) {
+      if (typeof sensor !== 'undefined') {
         sensor.stop();
       }
     };
@@ -197,7 +196,7 @@ export default function Home() {
   // テーマ分岐をuseMemoでまとめる
   const theme = useMemo(() => {
     let t;
-    let fontFamily = undefined;
+    let fontFamily = '';
     if (!selectedPreset) {
       // 時間帯テーマ
       if (manualTheme && manualTheme !== "auto") {
@@ -217,7 +216,14 @@ export default function Home() {
         fontFamily = preset.font;
       }
     }
-    return { ...t, fontFamily };
+    // 型安全のため、string型で返す
+    return {
+      ...t,
+      bg: t?.bg ?? '',
+      color: t?.color ?? '',
+      sec: t?.sec ?? '',
+      fontFamily: fontFamily ?? '',
+    };
   }, [contextTheme, manualTheme, selectedPreset, customTheme, now, ambient]);
   const fontFamily = theme.fontFamily;
 
@@ -318,7 +324,6 @@ export default function Home() {
       {pageContent}
       <Sidebar
         open={sidebarOpen}
-        onClose={()=>setSidebarOpen(false)}
         onNavigate={handleSidebarNavigate}
         active={activePage}
         theme={theme}
