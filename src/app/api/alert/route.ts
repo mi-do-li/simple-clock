@@ -5,8 +5,8 @@ interface AlertItem {
   title: string[];
 }
 
-function fetchWithTimeout(resource: string, options: any = {}) {
-  const { timeout = 10000 } = options;
+function fetchWithTimeout(resource: string, options: Record<string, unknown> = {}) {
+  const timeout = typeof options.timeout === 'number' ? options.timeout : 10000;
   return Promise.race([
     fetch(resource, options),
     new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       console.error('alert xml parse error:', e);
       return NextResponse.json({ alerts: [] }, { status: 500 });
     }
-    let items: AlertItem[] = Array.isArray(json?.rss?.channel?.[0]?.item)
+    const items: AlertItem[] = Array.isArray(json?.rss?.channel?.[0]?.item)
       ? (json.rss.channel[0].item as AlertItem[])
       : [json?.rss?.channel?.[0]?.item as AlertItem];
     const alerts = items
