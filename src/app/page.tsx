@@ -219,10 +219,10 @@ export default function Home() {
     // 型安全のため、string型で返す
     return {
       ...t,
-      bg: t?.bg ?? '',
-      color: t?.color ?? '',
-      sec: t?.sec ?? '',
-      fontFamily: fontFamily ?? '',
+      bg: t?.bg ?? '#ffffff',
+      color: t?.color ?? '#000000',
+      sec: t?.sec ?? '#888888',
+      fontFamily: fontFamily ?? 'Arial, sans-serif',
     };
   }, [contextTheme, manualTheme, selectedPreset, customTheme, now, ambient]);
   const fontFamily = theme.fontFamily;
